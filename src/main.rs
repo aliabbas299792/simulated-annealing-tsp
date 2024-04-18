@@ -1,10 +1,11 @@
+use itertools::Itertools;
 use rand::{seq::SliceRandom, thread_rng, Rng};
 
 fn valid_city_map(intercity_map: &Vec<Vec<u16>>) -> bool {
-    intercity_map.len() == 0 || intercity_map[0].len() != intercity_map.len()
+    intercity_map.len() != 0 && intercity_map[0].len() == intercity_map.len()
 }
 
-fn generate_map(num_cities: u32, weight_range: (u16, u16)) -> Option<Vec<Vec<u16>>> {
+fn generate_map(num_cities: u16, weight_range: (u16, u16)) -> Option<Vec<Vec<u16>>> {
     let mut gen = thread_rng();
     let (low, high) = weight_range;
 
@@ -31,17 +32,18 @@ fn generate_map(num_cities: u32, weight_range: (u16, u16)) -> Option<Vec<Vec<u16
 
 fn path_cost(intercity_map: &Vec<Vec<u16>>, path: &Vec<u16>) -> Option<u64> {
     if !valid_city_map(&intercity_map) {
-        return None
+        return None;
     }
 
-    Some(path
-        .windows(2)
-        .map(|endpoints| intercity_map[endpoints[0] as usize][endpoints[1] as usize] as u64)
-        .sum())
+    Some(
+        path.windows(2)
+            .map(|endpoints| intercity_map[endpoints[0] as usize][endpoints[1] as usize] as u64)
+            .sum(),
+    )
 }
 
-fn generate_path(intercity_map: &Vec<Vec<u16>>) -> Option<Vec<u16>> {
-    if valid_city_map(&intercity_map) {
+fn generate_random_path(intercity_map: &Vec<Vec<u16>>) -> Option<Vec<u16>> {
+    if !valid_city_map(&intercity_map) {
         return None; // must be a square map
     }
 
@@ -52,7 +54,37 @@ fn generate_path(intercity_map: &Vec<Vec<u16>>) -> Option<Vec<u16>> {
     Some(path)
 }
 
+fn brute_force_tsp(intercity_map: &Vec<Vec<u16>>) -> Option<(Vec<u16>, u64)> {
+    if !valid_city_map(&intercity_map) {
+        return None;
+    }
+
+    let num_cities = intercity_map.len();
+    let initial_path = intercity_map.iter().enumerate().map(|(idx, _)| idx as u16);
+    let cost = |p: &Vec<u16>| path_cost(&intercity_map, p);
+
+    let optimal_path = initial_path.permutations(num_cities)
+        .max_by(|p1, p2| cost(p1).cmp(&cost(p2)))
+        .unwrap();
+
+    let optimal_cost = path_cost(&intercity_map, &optimal_path);
+
+    match optimal_cost {
+        None => None,
+        Some(optimal_cost) => Some((optimal_path, optimal_cost)),
+    }
+}
+
 fn main() {
-    let map = generate_map(5, (10, 15)).unwrap_or_default();
-    println!("{:#?}", generate_path(&map));
+    let map = generate_map(10, (10, 15)).unwrap_or_default();
+
+    match brute_force_tsp(&map) {
+        None => println!("Brute force TSP finding failed"),
+        Some((optimal_path, optimal_cost)) => {
+            println!(
+                "The optimal path for the map {:#?} was {:#?}, and cost {:}",
+                map, optimal_path, optimal_cost
+            )
+        }
+    }
 }
