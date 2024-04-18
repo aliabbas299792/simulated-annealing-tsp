@@ -161,3 +161,85 @@ fn main() {
         }
     }
 }
+
+mod tests {
+    use crate::*;
+    use itertools::zip_eq;
+
+    #[test]
+    fn test_path_cost() {
+        let map: Vec<Vec<u16>> = vec![
+            vec![2, 2, 2, 2],
+            vec![2, 2, 2, 2],
+            vec![2, 2, 2, 2],
+            vec![2, 2, 2, 2],
+        ];
+        let path: Vec<u16> = vec![0, 1, 2, 3];
+
+        // all paths costs 2 so 3 movements needed, so 2*3 is the cost
+        let cost = path_cost(&map, &path);
+        assert!(cost.is_some());
+        assert_eq!(cost.unwrap(), 2 * 3);
+    }
+
+    #[test]
+    fn test_map_gen() {
+        let map = generate_map(5, (25, 40));
+        assert!(map.is_some());
+        let map = map.unwrap();
+
+        for i in 0..map.len() {
+            for j in 0..map.len() {
+                assert_eq!(map[i][j], map[j][i]); // must be symmetric
+            }
+        }
+    }
+
+    #[test]
+    fn test_random_path_gen() {
+        let map = generate_map(10, (60, 90)).unwrap();
+        let path = generate_random_path(&map);
+        assert!(path.is_some());
+        let path = path.unwrap();
+
+        let dedupd = path.iter().unique().collect::<Vec<&u16>>();
+        for (&e1, &e2) in zip_eq(&dedupd, &path) {
+            assert_eq!(*e1, e2);
+        }
+
+        assert_eq!(dedupd.len(), path.len());
+    }
+
+    #[test]
+    fn test_brute_force_tsp() {
+        let map: Vec<Vec<u16>> = vec![
+            vec![2, 2, 2, 1],
+            vec![1, 2, 2, 2],
+            vec![2, 1, 2, 2],
+            vec![2, 2, 1, 2],
+        ];
+        let path: Vec<u16> = vec![0, 3, 2, 1];
+
+        let res = brute_force_tsp(&map);
+        assert!(res.is_some());
+
+        let (optimal_path, optimal_cost) = res.unwrap();
+
+        assert_eq!(optimal_path, path);
+        assert_eq!(optimal_cost, path_cost(&map, &path).unwrap());
+    }
+
+    #[test]
+    fn test_simulated_annealing() {
+        let num_checks = 30;
+        
+        for _ in 0..num_checks {
+            let map = generate_map(5, (0, 300)).unwrap();
+            let (optimal_path, optimal_cost) = brute_force_tsp(&map).unwrap();
+            let (sim_anneal_optimal_path, sim_anneal_optimal_cost) = simulated_annealing_tsp(&map).unwrap();
+
+            assert_eq!(optimal_cost, sim_anneal_optimal_cost);
+            assert_eq!(optimal_path, sim_anneal_optimal_path);
+        }
+    }
+}
