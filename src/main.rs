@@ -63,8 +63,9 @@ fn brute_force_tsp(intercity_map: &Vec<Vec<u16>>) -> Option<(Vec<u16>, u64)> {
     let initial_path = intercity_map.iter().enumerate().map(|(idx, _)| idx as u16);
     let cost = |p: &Vec<u16>| path_cost(&intercity_map, p);
 
-    let optimal_path = initial_path.permutations(num_cities)
-        .max_by(|p1, p2| cost(p1).cmp(&cost(p2)))
+    let optimal_path = initial_path
+        .permutations(num_cities)
+        .min_by(|p1, p2| cost(p1).cmp(&cost(p2)))
         .unwrap();
 
     let optimal_cost = path_cost(&intercity_map, &optimal_path);
