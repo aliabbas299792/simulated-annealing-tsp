@@ -85,6 +85,41 @@ fn brute_force_tsp(intercity_map: &Vec<Vec<u16>>) -> Option<(Vec<u16>, u64)> {
     }
 }
 
+fn simulated_annealing_tsp(intercity_map: &Vec<Vec<u16>>) -> Option<(Vec<u16>, u64)> {
+    if !valid_city_map(&intercity_map) {
+        error!("The provided map must be square");
+        return None;
+    }
+
+    let cost = |p: &Vec<u16>| path_cost(&intercity_map, p);
+
+    let mut optimal_path = intercity_map
+        .iter()
+        .enumerate()
+        .map(|(idx, _)| idx as u16)
+        .collect::<Vec<u16>>();
+
+    let k = 32;
+    let mut optimal_cost = cost(&optimal_path);
+    for _ in 0..k {
+        let mut new_path = optimal_path.clone();
+        new_path.shuffle(&mut thread_rng());
+        let new_cost = cost(&new_path);
+        if new_cost < optimal_cost {
+            optimal_path = new_path;
+            optimal_cost = new_cost;
+        }
+    }
+
+    match optimal_cost {
+        None => {
+            error!("The optimal cost failed to be found");
+            None
+        }
+        Some(optimal_cost) => Some((optimal_path, optimal_cost)),
+    }
+}
+
 fn main() {
     // setup logging
     env_logger::Builder::new()
@@ -110,6 +145,17 @@ fn main() {
         Some((optimal_path, optimal_cost)) => {
             println!(
                 "(Using Brute Force) The optimal path for the map {:#?} was {:#?}, and cost {:}",
+                map, optimal_path, optimal_cost
+            )
+        }
+    }
+
+    // and get it using simulated annealing
+    match simulated_annealing_tsp(&map) {
+        None => error!("Simulated Annealing TSP finding failed"),
+        Some((optimal_path, optimal_cost)) => {
+            println!(
+                "(Using Simulated Annealing) The optimal path for the map{:#?} was {:#?}, and cost {:}",
                 map, optimal_path, optimal_cost
             )
         }
