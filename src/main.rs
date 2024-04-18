@@ -1,5 +1,7 @@
 use itertools::Itertools;
+use log::{error, LevelFilter};
 use rand::{seq::SliceRandom, thread_rng, Rng};
+use std::io::Write;
 
 fn valid_city_map(intercity_map: &Vec<Vec<u16>>) -> bool {
     intercity_map.len() != 0 && intercity_map[0].len() == intercity_map.len()
@@ -9,8 +11,9 @@ fn generate_map(num_cities: u16, weight_range: (u16, u16)) -> Option<Vec<Vec<u16
     let mut gen = thread_rng();
     let (low, high) = weight_range;
 
-    if high < low {
-        return None; // weight range cannot be inverted
+    if high <= low {
+        error!("Weight range cannot be reversed or empty");
+        return None;
     }
 
     let num_cities = num_cities as usize; // widen the type so that it may be used for the vector
@@ -32,6 +35,7 @@ fn generate_map(num_cities: u16, weight_range: (u16, u16)) -> Option<Vec<Vec<u16
 
 fn path_cost(intercity_map: &Vec<Vec<u16>>, path: &Vec<u16>) -> Option<u64> {
     if !valid_city_map(&intercity_map) {
+        error!("The provided map must be square");
         return None;
     }
 
@@ -44,7 +48,8 @@ fn path_cost(intercity_map: &Vec<Vec<u16>>, path: &Vec<u16>) -> Option<u64> {
 
 fn generate_random_path(intercity_map: &Vec<Vec<u16>>) -> Option<Vec<u16>> {
     if !valid_city_map(&intercity_map) {
-        return None; // must be a square map
+        error!("The provided map must be square");
+        return None;
     }
 
     let num_cities = intercity_map.len();
@@ -56,6 +61,7 @@ fn generate_random_path(intercity_map: &Vec<Vec<u16>>) -> Option<Vec<u16>> {
 
 fn brute_force_tsp(intercity_map: &Vec<Vec<u16>>) -> Option<(Vec<u16>, u64)> {
     if !valid_city_map(&intercity_map) {
+        error!("The provided map must be square");
         return None;
     }
 
@@ -71,19 +77,39 @@ fn brute_force_tsp(intercity_map: &Vec<Vec<u16>>) -> Option<(Vec<u16>, u64)> {
     let optimal_cost = path_cost(&intercity_map, &optimal_path);
 
     match optimal_cost {
-        None => None,
+        None => {
+            error!("The optimal cost failed to be found");
+            None
+        }
         Some(optimal_cost) => Some((optimal_path, optimal_cost)),
     }
 }
 
 fn main() {
-    let map = generate_map(10, (10, 15)).unwrap_or_default();
+    // setup logging
+    env_logger::Builder::new()
+        .format(|buff, record| {
+            writeln!(
+                buff,
+                "({}) [{}:{}] - {}",
+                record.level(),
+                record.file().unwrap(),
+                record.line().unwrap(),
+                record.args()
+            )
+        })
+        .filter(None, LevelFilter::Error)
+        .init();
 
+    // generate map
+    let map = generate_map(10, (1, 1)).unwrap_or_default();
+
+    // get the correct TSP path using brute force
     match brute_force_tsp(&map) {
-        None => println!("Brute force TSP finding failed"),
+        None => error!("Brute Force TSP finding failed"),
         Some((optimal_path, optimal_cost)) => {
             println!(
-                "The optimal path for the map {:#?} was {:#?}, and cost {:}",
+                "(Using Brute Force) The optimal path for the map {:#?} was {:#?}, and cost {:}",
                 map, optimal_path, optimal_cost
             )
         }
