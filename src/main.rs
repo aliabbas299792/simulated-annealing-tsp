@@ -6,6 +6,7 @@ use log::{error, LevelFilter};
 use std::io::Write;
 
 use brute_force::brute_force_tsp;
+use sim_annealing::simulated_annealing_tsp;
 use common::{generate_map, path_cost};
 
 fn main() {
@@ -33,6 +34,20 @@ fn main() {
         Ok((_, optimal_cost)) => {
             println!(
                 "(Using Brute Force) The optimal path cost was {:}",
+                optimal_cost
+            )
+        }
+    }
+
+    const MAX_ITERATIONS: u64 = 200000;
+    const TEMPERATURE: u64 = 200;
+
+    // and get it using simulated annealing
+    match simulated_annealing_tsp(&map, TEMPERATURE, MAX_ITERATIONS) {
+        Err(err) => error!("Simulated Annealing TSP finding failed: {}", err),
+        Ok((_, optimal_cost)) => {
+            println!(
+                "(Using Simulated Annealing) The optimal path cost was {:}",
                 optimal_cost
             )
         }
